@@ -13,6 +13,10 @@ routes.post('/authenticate', function (request, response) {
   return UserController.authenticate(request, response)
 })
 
+routes.post('/forgot-password', function (request, response) {
+  return UserController.forgotPassword(request, response)
+})
+
 // Protected Routes
 routes.use(auth)
 

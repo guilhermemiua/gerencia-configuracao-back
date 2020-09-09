@@ -1,6 +1,7 @@
 import { Response } from 'express'
 
 import bcrypt from 'bcrypt'
+import nodemailer from 'nodemailer'
 import jwt from 'jsonwebtoken'
 
 import connection from '../database/connection'
@@ -48,6 +49,7 @@ class UserController {
           username,
           email,
           password: hashPassword,
+          // eslint-disable-next-line @typescript-eslint/camelcase
           role_id: role.id
         })
         .into('users')
@@ -85,6 +87,50 @@ class UserController {
       const token = await jwt.sign({ userId: user.id }, process.env.JWT_SECRET)
 
       return response.status(201).send({ token: token })
+    } catch (error) {
+      return response.status(500).send({ message: 'Error' })
+    }
+  }
+
+  async forgotPassword (request: IRequest, response: Response): Promise<Response> {
+    try {
+      const { email } = request.body
+
+      if (!email) {
+        return response.status(404).send({ message: 'E-mail not provided.' })
+      }
+
+      const user = await connection
+        .select(['id', 'password'])
+        .where('email', email)
+        .from('users')
+        .first()
+
+      if (!user) {
+        return response.status(404).send({ message: 'E-mail or Password incorrect.' })
+      }
+
+      const testAccount = await nodemailer.createTestAccount()
+
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass
+        }
+      })
+
+      await transporter.sendMail({
+        from: '"Gerencia de Configuração" <foo@example.com>',
+        to: `${email}, ${email}`,
+        subject: 'Gerência de Configuração',
+        text: 'Senha',
+        html: `<h1>Sua senha é: ${user.password}</h1>`
+      })
+
+      return response.status(200).send()
     } catch (error) {
       return response.status(500).send({ message: 'Error' })
     }
